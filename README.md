@@ -11,8 +11,6 @@ We study the problem of ranking the top-k stable marriages by egalitarian cost, 
 - Dating
 - School
 
-**Download**: [shorturl.at/lrATU](shorturl.at/lrATU)
-
 # Methods
 
 ### Exact Solutions:
