@@ -1,8 +1,8 @@
-# Finding the Top-k Egalitarian Stable Marriages(KESMP)
+# Ranking Egalitarian Stable Marriages(ESMRP)
 
 # Introduction
 
-We study the problem of finding the top-k stable marriages by egalitarian cost, which we call the top-k Egalitarian Stable Marriage Problem (k-ESMP).
+We study the problem of ranking the top-k stable marriages by egalitarian cost, which we call the Egalitarian Stable Marriage Ranking Problem (ESMRP).
 
 # Datasets
 
