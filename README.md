@@ -2,7 +2,7 @@
 
 # Introduction
 
-We study the problem of ranking the top-k stable marriages by egalitarian cost, which we call the Egalitarian Stable Marriage Ranking Problem (ESMRP).
+We study the problem of ranking the stable marriages by egalitarian cost, which we call the Egalitarian Stable Marriage Ranking Problem (ESMRP).
 
 # Datasets
 
