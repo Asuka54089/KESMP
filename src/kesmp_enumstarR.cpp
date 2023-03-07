@@ -1,22 +1,32 @@
 
-#include "../include/kesmp_enumstar.h"
+#include "../include/kesmp_enumstarR.h"
 
 using namespace std;
 
-void KESMP_Enumstar::init_method()
+void KESMP_Rotation::init_method()
 {
+
     smg.init_pred_and_succ();
     init_topk();
+
+    diff_kS = INT_MIN;
+
+    //is r visited ?(as a start rotation)
+    visited = new bool[smg.rotation_num];
+    for (int i = 0; i < smg.rotation_num; i++)
+    {
+        visited[i] = false;
+    }
+    init_rotation_bounds();
 }
 
-// ENUM*
-vector<ClosedSubset> KESMP_Enumstar::find_topk_S(int k)
+vector<ClosedSubset> KESMP_Rotation::find_topk_S(int k)
 {
     init_method();
 
     set<int> null_A;
 
-    // the first result: the male optimal stable marriage (S is empty)
+    // the first result: male optimal stable marriage (S is empty)
     update_kesm(null_A, k);
     
     // candidate rotations for expanding antichain A
@@ -34,26 +44,42 @@ vector<ClosedSubset> KESMP_Enumstar::find_topk_S(int k)
     return best_kSs;
 }
 
-void KESMP_Enumstar::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
+void KESMP_Rotation::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
 {
-
     for (int i = smg.rotation_num - 1; i >= pos; i--)
     {
         if (antichain_counter > MAX_ANTICHAIN_NUM)
         {
             return;
         }
-      
-        int r = RA[i];
+        
+        int r =  RA[i];
         if (r < 0)
         {
             continue;
         }
-        A.insert(r);
 
+        if (pruned_rotations.find(r) != pruned_rotations.end())
+        {
+            continue;
+        }
+
+        //calculate rotation bound
+        if (visited[r] == false)
+        {
+            visited[r] = true;
+            calculate_rotation_bound(r, k);
+        }
+
+        A.insert(r);
         //update topk results
         S = smg.antichain_to_closedsubset(A);
-        update_kesm(S, k);
+        is_updated = update_kesm(S, k);
+
+        if (is_updated)
+        {
+            update_pruned_rotations(k);
+        }
 
         vector<int> tmp_RA; //local variable (can't be the class memeber)
         vaild_counter = 0;
@@ -86,16 +112,20 @@ void KESMP_Enumstar::expand_antichain(set<int> A, vector<int> RA, int pos, int k
     }
 }
 
-
-
-void KESMP_Enumstar::package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results)
+void KESMP_Rotation::package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results)
 {
     map<string, int> counters = {
         {"antichain_counter", antichain_counter},
         //{"update_counter", update_counter},
+        //{"recursion_counter", recursion_counter},
+        {"#rotation", smg.rotation_num},
+        {"first_pruning", pruned_rotation_counter},
+        {"final_pruning", pruned_rotations.size()},
     };
-    map<string, string> lists = {};
-    string save_path = results_file + "_m1";
-    save_results(save_path, "enum*", runtime, counters, lists, kesm_results);
-
+    map<string, string> lists = {
+        {"rotation_time", to_string(rotation_bound_time)},
+    };
+    string save_path = results_file + "_m3";
+    save_results(save_path, "enum*r", runtime, counters, lists, kesm_results);
 }
+

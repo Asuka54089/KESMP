@@ -1,64 +1,64 @@
-// maxflow工具类, 计算layer bound
-// 只算maxflow, 跟stable marriage分开
-
-#include "../include/maxflow.h"
+#include "../include/bound_mincut.h"
 
 using namespace std;
 
-Maxflow::Maxflow(bool verbose)
+Mincut::Mincut(bool verbose)
 {
     this->verbose = verbose;
 }
 
-void Maxflow::init_flow_graph(vector<set<int>> children, vector<int> rotation_weights, vector<int> rotation_depths)
+void Mincut::init_flow_graph(vector<set<int>> children, vector<int> rotation_weights, vector<int> rotation_depths)
 {
-    
+
     this->rotation_num = rotation_weights.size();
 
-
+    // 1. init the whole G_F. 
+    // #V[G_F] = RG_size + 2 (s and t)
     flow_graph = new int *[rotation_num + 2];
     for (int i = 0; i < rotation_num + 2; i++)
     {
         flow_graph[i] = new int[rotation_num + 2];
         for (int j = 0; j < rotation_num + 2; j++)
         {
-        
+            // cannot pass
             flow_graph[i][j] = 0;
         }
     }
- 
+    // init edges in G_R
     for (int i = 0; i < rotation_num; i++)
     {
         for (int j : children[i])
         {
-          
+            //edges in G_R
             flow_graph[i][j] = pINF;
-           
+            //reversed edges in G_R (has been valued above)
             //flowG[j][i] = 0;
         }
     }
-
-    // RG_size      s
-    // RG_size+1    t
+    // init s-->r- and r+-->t
+    // index RG_size      s
+    // index RG_size+1    t
     for (int i = 0; i < rotation_num; i++)
     {
         if (rotation_weights[i] > 0)
         {
             // r+ ->t
             flow_graph[i][rotation_num + 1] = rotation_weights[i];
-         
+            // r+ <-t (has been valued above)
             //flowG[RG_size + 1][i] = 0;
         }
         if (rotation_weights[i] < 0)
         {
-            // s ->r-
+            // s -> r-
             flow_graph[rotation_num][i] = -rotation_weights[i];
-        
+            // s <- r- (has been valued above)
             //flowG[i][RG_size] = 0;
         }
     }
 
-    
+
+    //2. init residual graph and mask
+    // no values
     residual_graph = new int *[rotation_num + 2];
     for (int i = 0; i < rotation_num + 2; i++)
     {
@@ -66,11 +66,12 @@ void Maxflow::init_flow_graph(vector<set<int>> children, vector<int> rotation_we
     }
     rotation_mask = new bool[rotation_num];
 
+    //3.init depths and weights
     this->rotation_depths = rotation_depths;
     this->rotation_weights = rotation_weights;
 }
 
-void Maxflow::shrink_flow_graph(int outlayer)
+void Mincut::shrink_flow_graph(int outlayer)
 {
     //memset(mask, 0, sizeof(mask));
     for (int i = 0; i < rotation_num; i++)
@@ -102,11 +103,11 @@ void Maxflow::shrink_flow_graph(int outlayer)
     }
 }
 
-void Maxflow::construct_residual_graph()
+void Mincut::construct_residual_graph()
 {
 
     int i, j;
-   
+    //init residual graph
     for (i = 0; i < rotation_num + 2; i++)
     {
         for (j = 0; j < rotation_num + 2; j++)
@@ -142,7 +143,7 @@ void Maxflow::construct_residual_graph()
     }
 }
 
-bool Maxflow::bfs(int s, int t, int *parent)
+bool Mincut::bfs(int s, int t, int *parent)
 {
     // Create a visited array and mark all vertices as not
     // visited
@@ -189,7 +190,7 @@ bool Maxflow::bfs(int s, int t, int *parent)
 }
 
 // Returns the maximum flow from s to t in the given graph
-int Maxflow::EdmondsKarp(int outlayer)
+int Mincut::EdmondsKarp(int outlayer)
 {
     int u, v;
 
@@ -252,7 +253,7 @@ int Maxflow::EdmondsKarp(int outlayer)
     return max_flow;
 }
 
-void Maxflow::dfs(int **graph, const int s, bool *visited)
+void Mincut::dfs(int **graph, const int s, bool *visited)
 {
     visited[s] = true;
     //cout << "visited " << s << endl;
@@ -265,7 +266,7 @@ void Maxflow::dfs(int **graph, const int s, bool *visited)
         }
 }
 
-set<int> Maxflow::min_cut()
+set<int> Mincut::min_cut()
 {
     set<int> max_subset;
 
@@ -304,7 +305,7 @@ set<int> Maxflow::min_cut()
     return max_subset;
 }
 
-void Maxflow::print_residual_graph()
+void Mincut::print_residual_graph()
 {
     cout << "+++++++++++++++++++++++" << endl;
     for (int i = 0; i < rotation_num + 2; i++)
@@ -318,7 +319,7 @@ void Maxflow::print_residual_graph()
     cout << endl;
 }
 
-void Maxflow::print_path(int *parent, int size)
+void Mincut::print_path(int *parent, int size)
 {
     for (int i = size; i != size; i = parent[i])
     {

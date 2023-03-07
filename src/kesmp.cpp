@@ -5,63 +5,12 @@
 using namespace std;
 
 
-KESMP::KESMP(bool verbose_case, bool verbose_result)
-{
-    this->verbose_case = verbose_case;
-    this->verbose_result = verbose_result;
-}
+KESMP::KESMP(){}
 
-void KESMP::init_rotation_graph(set<pair<int, int>> rotation_edges, int rotation_num, vector<int> rotation_weights, vector<int> rotation_depths)
-{
-    
-    this->rotation_weights = rotation_weights;
-    this->rotation_depths = rotation_depths;
-
-    
-    this->rotation_num = rotation_num;
-    children.resize(rotation_num);
-    
-    for (auto iter = rotation_edges.begin(); iter != rotation_edges.end(); ++iter)
-    {
-        int rs = iter->first;
-        int rt = iter->second;
-
-        children[rs].insert(rt);
-    }
-
-    if (verbose_case)
-    {
-        cout << "rotation graph nodes:" << rotation_num << endl;
-        cout << "rotation graph edges:" << rotation_edges.size() << endl;
-        print_adj(children, "children");
-    }
-}
-
-/* Enum */
-void KESMP::construct_trie()
-{
-    pred.resize(rotation_num);
-    succ.resize(rotation_num);
-
-
-    for (int i = 0; i < rotation_num; i++)
-    {
-        for (auto j : children[i])
-        {
-            pred[j].insert(i);
-            succ[i].insert(j);
-            for (auto k : pred[i])
-            {
-                pred[j].insert(k);
-                succ[k].insert(j);
-            }
-        }
-    }
-    if (verbose_case)
-    {
-        print_adj(succ, "succ");
-        print_adj(pred, "pred");
-    }
+void KESMP::init(vector<vector<int>> &male_prefers, vector<vector<int>> &female_prefers,vector<int> &matching,vector<Rotation> &rotations,set<pair<int, int>> &rotation_edges){
+    antichain_counter=0;
+    smo.init(male_prefers, female_prefers,matching,rotations);
+    smg.init(rotation_edges,rotations.size(),rotations.back().depth);
 }
 
 void KESMP::init_method() {}
@@ -69,28 +18,23 @@ void KESMP::init_method() {}
 /* TopK */
 void KESMP::init_topk()
 {
-    //maintain topk results
-    kesm_heap.clear();
-    tmp_subsets.clear();
+    // Maintain candidate top-k results
+    TKSM_object.clear();
+    tmp_S.clear();
     antichain_counter = 0;
     update_counter = 0;
 }
 
 /* TopK */
-bool KESMP::update_kesm(Subset subset, int k)
+bool KESMP::update_kesm(set<int> &S, int k)
 {
     antichain_counter++;
-    // cout << "count1:" << antichain_counter << endl;
-    int weight = calculate_weight(subset);
-    ClosedSubset x(weight, subset);
-    is_updated = kesm_heap.update(x, k);
-    if (verbose_case)
-    {
-        cout << "Weight:" << weight << endl;
-        cout << "isUpdated:" << is_updated << endl;
-        cout << endl;
-    }
-    // maintain topk result
+
+    //print_rotation_set(S, to_string(S.size()));
+    int diff_S = smo.calculate_diff_S(S);
+    //cout<< antichain_counter <<endl;
+    ClosedSubset x(diff_S, S);
+    is_updated = TKSM_object.update(x, k);
 
     if (is_updated)
     {
@@ -100,58 +44,65 @@ bool KESMP::update_kesm(Subset subset, int k)
 }
 
 /* TopK */
-vector<ClosedSubset> KESMP::find_posets(int k) {}
+vector<ClosedSubset> KESMP::find_topk_S(int k) {}
 
 /* Layer Bound */
-void KESMP::init_layer_bound()
+void KESMP::init_layer_bounds()
 {
-    layer_bound_flag1 = test_layer_bound();
-    if (layer_bound_flag1 == false)
+    layer_bound_time = 0;
+
+
+    lb_flag_rotation = test_flag_rotation();
+    if (lb_flag_rotation == false)
     {
         return;
     }
-    //init counter
-    //achain_test_counter = 0;
-    maxflow_time = 0;
 
-    //init bound/topk
+
+    //init bound
     layer_bound = INT_MAX;
 
-    stop_flag = false;
-
     //layer
-    L_max = rotation_depths.back(); 
-    L_current = L_max;              
-    L_stop = -1;                    
+    L_max = smg.max_depth; //the last rotation
+    L_current = L_max;              //shrink from the max layer of G_R
+    L_stop = -1;                    //init, if we don't have any candidate top-k results, the graph should shrink to the first layer. (layer 0)
+    lb_flag_stop = false;  // init, we can't prune now.
 
-    //GF = Maxflow(verbose_case);
-    layer_bound_flag2 = true;
-    GF.init_flow_graph(children, rotation_weights, rotation_depths);
-    update_maxflow_bound(-1); //计算完整图的maxflow bound
-    if (layer_bound_flag2 == false)
+    //apply mincut on the whole G_R to generate max subset
+    lb_flag_mincutset = true;
+
+    vector<int> rotation_weights;
+    vector<int> rotation_depths;
+    for(int i=0;i<smg.rotation_num;i++){
+        rotation_weights.push_back(smo.eliminated_rotations[i].weight);
+        rotation_depths.push_back(smo.eliminated_rotations[i].depth);
+    }
+    GF.init_flow_graph(smg.children, rotation_weights, rotation_depths);
+    update_layer_bound(-1); //calculate the maximized closed subset for G_R
+    if (lb_flag_mincutset == false)
     {
         return;
     }
 
-    cross_flag = true;
+    lb_flag_cross = true; 
 }
 
 /* Layer Bound */
-bool KESMP::test_layer_bound()
+bool KESMP::test_flag_rotation()
 {
     bool positive = false;
     bool negative = false;
-    for (int w : rotation_weights)
+    for (int i=0;i<smg.rotation_num;i++)
     {
-        if (w > 0)
+        if (smo.eliminated_rotations[i].weight > 0)
         {
             positive = true;
             break;
         }
     }
-    for (int w : rotation_weights)
+    for (int i=0;i<smg.rotation_num;i++)
     {
-        if (w < 0)
+        if (smo.eliminated_rotations[i].weight < 0)
         {
             negative = true;
             break;
@@ -165,65 +116,12 @@ bool KESMP::test_layer_bound()
 }
 
 /* Layer Bound */
-bool KESMP::update_maxflow_bound(int k)
+bool KESMP::test_flag_A_iscross(const set<int> &x)
 {
-    start_time = clock();
-
-    GF.EdmondsKarp(L_current);
-    set<int> x = GF.min_cut();
-    if (x.size() == 0)
-    {
-        layer_bound_flag2 = false;
-        return false;
-    }
-    r_maxflow = *x.rbegin();
-    L_maxflow = rotation_depths[r_maxflow] - 1; 
-
-    maxflow_layers.push_back(L_maxflow); 
-
-    subset = antichain_to_closedsubset(x);
-    layer_bound = calculate_weight(subset);
-
-    kesm_weight = kesm_heap.tail(k);
-    maxflow_bounds.push_back(layer_bound); 
-    rule2_kesm_weight.push_back(kesm_weight);        
-    if (layer_bound < kesm_weight)
-    {
-        L_stop = L_current;
-        stop_flag = true;
-    }
-
-    end_time = clock();
-    maxflow_time = maxflow_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
-
-    if (verbose_case)
-    {
-        cout << "update layer bound" << endl;
-        cout << "current Layer:" << L_current << endl;
-        cout << "r_maxflow:" << r_maxflow << endl;
-        cout << "L_maxflow:" << L_maxflow << endl;
-        cout << "Maximum closed subset:" << endl;
-        print_subset(subset);
-        cout << "layer_bound:" << layer_bound << endl;
-        cout << "kesm:" << kesm_weight << endl;
-        cout << "stop_flag:" << stop_flag << endl;
-        cout << "L_stop:" << L_stop << endl;
-        // cout << "update_counter " << update_counter << endl;
-        cout << endl;
-    }
-
-    return stop_flag;
-}
-
-/* Layer Bound */
-bool KESMP::test_cross_antichain(const Antichain &x)
-{
-    //achain_test_counter++;
     for (int i : x)
     {
-        if (rotation_depths[i] > L_stop)
+        if (smo.eliminated_rotations[i].depth > L_stop)
         {
-            //cout << "true" << endl;
             return true;
         }
     }
@@ -235,134 +133,153 @@ bool KESMP::test_cross_candidate(const vector<int> &x, int start, int end)
 {
     for (int i = end; i >= start; i--)
     {
-        if (x[i] > 0 && rotation_depths[i] > L_stop)
+        if (x[i] > 0 && smo.eliminated_rotations[i].depth > L_stop)
         {
-            //cout << "true" << endl;
             return true;
         }
     }
     return false;
 }
 
-/* Subset Bound */
-void KESMP::init_subset_bound()
+/* Layer Bound */
+bool KESMP::update_layer_bound(int k)
 {
-    pruning_counter = 0;
-    subset_time = 0;
-    invaild_bounds.clear();
+    start_time = clock();
+
+    GF.EdmondsKarp(L_current);
+    set<int> X = GF.min_cut();
+    if (X.size() == 0)
+    {
+        lb_flag_mincutset = false;
+        return false;
+    }
+    r_maxflow = *X.rbegin();
+    // update the next layer we can apply mincut
+    L_maxflow = smo.eliminated_rotations[r_maxflow].depth - 1;
+
+
+    mincut_layers.push_back(L_maxflow); 
+
+    S = smg.antichain_to_closedsubset(X);
+    layer_bound = smo.calculate_diff_S(S);
+
+    diff_kS = TKSM_object.tail(k);
+    mincut_bounds.push_back(layer_bound); 
+    mincut_diff_kS.push_back(diff_kS);        
+    if (layer_bound < diff_kS)
+    {
+        L_stop = L_current;
+        lb_flag_stop = true;
+    }
+
+    end_time = clock();
+    layer_bound_time = layer_bound_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+    bool x = lb_flag_stop;
+    return x;
+}
+
+
+
+/* Rotation Bound */
+void KESMP::init_rotation_bounds()
+{
+    pruned_rotation_counter = 0;
+    rotation_bound_time = 0;
+    rotation_bounds.clear();
     pruned_rotations.clear();
 }
 
-/* Subset Bound */
-
-void KESMP::update_invaild_bound(int r, int k)
+/* Rotation Bound */
+//1.for successors: positive rotations - positive rotations in succ[r]
+//2.for predecesors: negative rotations in prev[r]
+void KESMP::calculate_rotation_bound(int r, int k)
 {
     start_time = clock();
 
     int positiveR_prev = 0;
     int positiveR_succ = 0;
     int i;
-    int r_d = rotation_depths[r];
+    int r_d = smo.eliminated_rotations[r].depth;
 
-    for (i = 0; i < rotation_weights.size(); i++)
+    for (i = 0; i < smg.rotation_num; i++)
     {
-        if (rotation_weights[i] > 0)
+        if (smo.eliminated_rotations[i].weight > 0)
         {
-            if (rotation_depths[i] <= r_d)
+            if (smo.eliminated_rotations[i].weight <= r_d)
             {
-                positiveR_prev = positiveR_prev + rotation_weights[i];
+                positiveR_prev = positiveR_prev + smo.eliminated_rotations[i].weight;
             }
             else
             {
-                positiveR_succ = positiveR_succ + rotation_weights[i];
+                positiveR_succ = positiveR_succ + smo.eliminated_rotations[i].weight;
             }
         }
     }
 
-    for (int i : succ[r])
+    for (int i : smg.succ[r])
     {
-        if (rotation_weights[i] > 0)
+        if (smo.eliminated_rotations[i].weight > 0)
         {
-            positiveR_succ = positiveR_succ - rotation_weights[i];
+            positiveR_succ = positiveR_succ - smo.eliminated_rotations[i].weight;
         }
     }
 
-    for (int i : pred[r])
+    for (int i : smg.pred[r])
     {
-        if (rotation_weights[i] < 0)
+        if (smo.eliminated_rotations[i].weight < 0)
         {
-            positiveR_prev = positiveR_prev + rotation_weights[i];
+            positiveR_prev = positiveR_prev + smo.eliminated_rotations[i].weight;
         }
     }
-    int half_bound = positiveR_prev;
-    int all_bound = positiveR_prev + positiveR_succ;
 
-    kesm_weight = kesm_heap.tail(k);
+    int r_bound = positiveR_prev + positiveR_succ;
 
-    if (kesm_weight > all_bound)
+    diff_kS = TKSM_object.tail(k);
+
+    if (diff_kS > r_bound)
     {
         pruned_rotations.insert(r);
-        pruning_counter++;
+        pruned_rotation_counter++;
     }
     else
     {
-        SubsetBound x = SubsetBound(r, all_bound);
-        invaild_bounds.insert(x);
+        RotationBound rb = RotationBound(r, r_bound);
+        rotation_bounds.insert(rb);
     }
 
     end_time = clock();
-    subset_time = subset_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    rotation_bound_time = rotation_bound_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
 }
 
-/* Subset Bound */
+/* Rotation Bound */
 void KESMP::update_pruned_rotations(int k)
 {
     start_time = clock();
 
-    kesm_weight = kesm_heap.tail(k);
+    diff_kS = TKSM_object.tail(k);
 
-    while (!invaild_bounds.empty())
+    while (!rotation_bounds.empty())
     {
-        SubsetBound temp = invaild_bounds.pop();
-        if (kesm_weight > temp.bound)
+        RotationBound temp = rotation_bounds.pop();
+        if (diff_kS > temp.bound)
         {
             pruned_rotations.insert(temp.rotation);
         }
         else
         {
-            invaild_bounds.insert(temp);
+            rotation_bounds.insert(temp);
             break;
         }
     }
 
     end_time = clock();
-    subset_time = subset_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    rotation_bound_time = rotation_bound_time + (double)(end_time - start_time) / CLOCKS_PER_SEC;
 }
 
 
-int KESMP::calculate_weight(Subset x)
-{
-    int weight = 0;
-    for (int i : x)
-    {
-        weight = weight + rotation_weights[i];
-    }
-    return weight;
-}
 
-Subset KESMP::antichain_to_closedsubset(Antichain antichain)
-{
-    Subset closed_subset;
-    for (int r : antichain)
-    {
-        closed_subset.insert(r);
-        closed_subset.insert(pred[r].begin(), pred[r].end());
-    }
-    return closed_subset;
-}
-
-
-bool KESMP::save_results(const string &results_file, string method, double runtime, map<string, int> counters, map<string, string> lists, vector<ClosedSubset> kesm_results)
+bool KESMP::save_results(const string &results_file, string method, double runtime, map<string, int> &counters, map<string, string> &lists, vector<ClosedSubset> &best_kSs)
 {
 
     ofstream output_file;
@@ -386,10 +303,13 @@ bool KESMP::save_results(const string &results_file, string method, double runti
         //cout << t.first << t.second << endl;
     }
     output_file << endl;
-    for (ClosedSubset i : kesm_results)
+
+    // for (ClosedSubset Si : best_kSs)
+    for (int i = best_kSs.size()-1; i>=0; i--)
     {
-        output_file << i.weight << endl;
-        for (int j : i.rotations)
+        ClosedSubset Si = best_kSs[i];
+        output_file << smo.male_esm_score-Si.diff_S << endl;
+        for (int j : Si.rotations)
         {
             output_file << j << " ";
         }
@@ -398,7 +318,7 @@ bool KESMP::save_results(const string &results_file, string method, double runti
     output_file.close();
 }
 
-
+/* save */
 string KESMP::convert_list(const vector<int> info)
 {
     string info_str;
@@ -410,69 +330,7 @@ string KESMP::convert_list(const vector<int> info)
     return info_str;
 }
 
-void KESMP::package_results(const string &results_file, double runtime, vector<ClosedSubset> results){};
+/* save */
+void KESMP::package_results(const string &results_file, double runtime, vector<ClosedSubset> &best_kSs){};
 
-void KESMP::print_adj(vector<set<int>> adj, string type)
-{
-    cout << "-----" << type << "-----" << endl;
-    for (int i = 0; i < adj.size(); i++)
-    {
-        cout << i << endl;
-        for (auto itr = adj[i].begin(); itr != adj[i].end(); itr++)
-        {
-            cout << *itr << " ";
-        }
-        cout << endl;
-        cout << endl;
-    }
-}
 
-void KESMP::print_results(vector<ClosedSubset> results)
-{
-    cout << "antichain_counter: " << antichain_counter << endl;
-    cout << "update_counter: " << update_counter << endl;
-    for (int i = 0; i < results.size(); i++)
-    {
-        cout << i << endl;
-        cout << "weight: " << results[i].weight << endl;
-        print_subset(results[i].rotations);
-
-        cout << endl;
-    }
-}
-
-void KESMP::print_antichain(Antichain antichain)
-{
-    cout << "Antichain: ";
-    for (auto itr = antichain.begin(); itr != antichain.end(); itr++)
-    {
-        cout << *itr << " ";
-    }
-    cout << endl;
-}
-
-void KESMP::print_subset(Subset subset)
-{
-    cout << "Subset: ";
-    for (auto itr = subset.begin(); itr != subset.end(); itr++)
-    {
-        cout << *itr << " ";
-    }
-    cout << endl;
-}
-
-void KESMP::print_AQ_item(AntichainQueueItem AQ_item)
-{
-    cout << "AQ_Antichain: ";
-    for (auto n : AQ_item.antichain)
-    {
-        cout << n << " ";
-    }
-
-    cout << "AQ_Candidates: ";
-    for (auto n : AQ_item.candidates)
-    {
-        cout << n << " ";
-    }
-    cout << endl;
-}

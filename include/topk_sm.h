@@ -4,45 +4,32 @@
 #include <iostream>
 #include <vector>
 #include <set>
-#include <bits/stdc++.h>
+#include <queue>
+//#include <bits/stdc++.h>
 #include "limits.h"
+
+#include "structs.h"
 using namespace std;
 
-typedef set<int> Subset;
-struct ClosedSubset
-{
-	int weight;
-	Subset rotations;
-	ClosedSubset(int _weight, Subset _rotations) : weight(_weight), rotations(_rotations) {}
 
-	bool operator<(const ClosedSubset &c2) const
-	{
-		return (weight < c2.weight);
-	}
-	bool operator>(const ClosedSubset &c2) const
-	{
-		return (weight > c2.weight);
-	}
-	bool operator==(const ClosedSubset &c2) const
-	{
-		return (weight == c2.weight);
-	}
-};
-
-
+// Top-k ESM Class
+// a priority queue to maintain candidate top-k best closed subsets
 class TopK_StableMarriages
 {
 public:
 
-	priority_queue<ClosedSubset, vector<ClosedSubset>, greater<ClosedSubset>> candidate_k_results;
-
+	// candidate top-k closed subsets
+	priority_queue<ClosedSubset, vector<ClosedSubset>, greater<ClosedSubset>> candidate_kSs;
 
 	TopK_StableMarriages();
-
+	
+	// update top-k results
 	bool update(ClosedSubset x, int k);
+	// return the k-th best result
 	int tail(int k);
 	void clear();
 
+	// return final top-k results
 	vector<ClosedSubset> generate();
 };
 

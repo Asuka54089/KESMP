@@ -9,12 +9,14 @@ class KESMP_Enumstar : public KESMP
 public:
     void init_method();
 
-    KESMP_Enumstar(bool verbose_case, bool verbose_result) : KESMP(verbose_case, verbose_result){};
+    KESMP_Enumstar() : KESMP(){};
 
-    vector<ClosedSubset> find_posets(int k);
-    void expand_antichain(Antichain antichain, vector<int> candidates, int pos, int k);
+    // Method 1: ENUM*
+    vector<ClosedSubset> find_topk_S(int k);
     
-    vector<ClosedSubset> find_posets_queue(int k);
+    void expand_antichain(set<int> A, vector<int> RA, int pos, int k);
+    
+    //vector<ClosedSubset> find_topK_S_queue(int k);
     
     void package_results(const string &results_file,double runtime,vector<ClosedSubset> kesm_results);
 };

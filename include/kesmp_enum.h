@@ -3,27 +3,23 @@
 
 #include "kesmp.h"
 
+
 class KESMP_Enum : public KESMP
 {
 public:
-    //counter
-    int enum_counter;
-
-    bool overflow;
-
-
-    vector<set<int>> parents;
-    
     void init_method();
 
-    KESMP_Enum(bool verbose_case, bool verbose_result) : KESMP(verbose_case, verbose_result){};
-    vector<ClosedSubset> find_posets(int k);
+    KESMP_Enum() : KESMP(){};
 
-    //enumerate all + reverse_bfs
-    bool isClosed(Subset subset);
-    bool reverse_bfs(int v, Subset subset, bool isclosed[]);
+    // Method 0: ENUM
+    vector<ClosedSubset> find_topk_S(int k);
+    
+    void init_Rexposed(vector<int> &D, deque<int> &Rexposed);
 
-    void package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results);
+    void enumerate_stable_marriages(vector<int> &D,deque<int> &Rexposed, set<int> &S, int k);
+    
+    
+    void package_results(const string &results_file,double runtime,vector<ClosedSubset> kesm_results);
 };
 
 #endif
