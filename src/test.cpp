@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
             
         string instance_dir = util::Format(dir_format, key, key);
 
-        Query x = Query(instance_dir,instance_dir,instance_dir+"_m",instance_dir);
+        Query x = Query(instance_dir);
   
 
         x.query(method,k);
@@ -38,24 +38,17 @@ int main(int argc, char *argv[])
 
 // int main(int argc, char *argv[])
 // {
-//     // Dataset Key (foler name)
-//     // [Input Files] 
-//     // 1. preference lists    key
-//     // 2. rotation graph (node)  key_r
-//     // 3. rotation graph (edge)  key_e
-//     // 4. male-optimal/female-optimal matching  key_m
-//     // 5. instance info (n, type, rotation graph, hard instance params) 
+
 
 //     // string key = "uniform";
-//     string key = "n8";
+//     string key = "testn";
+//     // string key = "n8";
+
+//     string dir_format = "./instance/{}/{}";
+            
+//     string instance_dir = util::Format(dir_format, key, key);
     
-//     string preference_file = "./instance/"+key;
-//     string rotation_file = "./instance/"+ key;
-//     string matching_file = "./instance/"+ key +"_m";
-//     //string info_file = "./instance/"+key+"_i";
     
-//     // Result File
-//     string result_file = "./instance/"+key;
 
 //     // Query Params
 //     // 1. method
@@ -67,13 +60,15 @@ int main(int argc, char *argv[])
 //     // [5]: ENUM*-h
 //     // [6]: ENUM*-h-LR
 //     // 2. k
-//     int method = 0;
+//     int method = 1;
 //     int k = 5;
 
     
-//     Query x = Query(preference_file,rotation_file,matching_file,result_file);
-  
+   
+
+//     Query x = Query(instance_dir);
 
 //     x.query(method,k);
+
 
 // }

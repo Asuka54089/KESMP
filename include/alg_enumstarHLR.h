@@ -1,18 +1,18 @@
-#ifndef KESMP_ENUMSTARHLR_H_
-#define KESMP_ENUMSTARHLR_H_
+#ifndef ALG_ENUMSTARHLR_H_
+#define ALG_ENUMSTARHLR_H_
 
 #include "kesmp.h"
 
-class KESMP_HLR : public KESMP
+class EnumStarHLR : public KESMP
 {
 public:
-    KESMP_HLR() : KESMP(){};
+    EnumStarHLR(string instance_dir) : KESMP(instance_dir){};
     void init_method();
 
-    int candidate_size; 
+    int candidate_size;
 
     //Method 6: ENUM*-H-LR
-    vector<ClosedSubset> find_topk_S(int k);
+    vector<ClosedSubset> find_topk_closedsubsets(int k);
     void expand_antichain(set<int> A, vector<int> RA, int pos, int k);
     void package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results);
 };

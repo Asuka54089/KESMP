@@ -6,38 +6,33 @@
 #include <set>
 
 #include "../include/utils.h"
-#include "../include/rotation.h"
+#include "../include/entities_rotation.h"
 
 #include "../include/kesmp.h"
 
-#include "../include/kesmp_enum.h"
-#include "../include/kesmp_enumstar.h"
+#include "../include/alg_enum.h"
+#include "../include/alg_enumstar.h"
 
-#include "../include/kesmp_enumstarL.h"
-#include "../include/kesmp_enumstarR.h"
-#include "../include/kesmp_enumstarLR.h"
+#include "../include/alg_enumstarL.h"
+#include "../include/alg_enumstarR.h"
+#include "../include/alg_enumstarLR.h"
 
-#include "../include/kesmp_enumstarH.h"
-#include "../include/kesmp_enumstarHLR.h"
+#include "../include/alg_enumstarH.h"
+#include "../include/alg_enumstarHLR.h"
 
 class Query
 {
 public:
 
     // input instance
-    vector<vector<int>> male_prefers;
-    vector<vector<int>> female_prefers;
-    vector<int> male_opt_matching,female_opt_matching;
-    set<pair<int, int>> rotation_edges;
-    vector<Rotation> rotations;
+    string instance_dir;
 
-    string results_file;
 
     clock_t start_time, end_time;
     double runtime;
     vector<ClosedSubset> results;
 
-    Query(string preference_file,string rotation_file,string matching_file, string results_file);
+    Query(string instance_dir);
     
     void query(int method, int k);
 

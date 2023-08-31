@@ -19,7 +19,7 @@ class TopK_StableMarriages
 public:
 
 	// candidate top-k closed subsets
-	priority_queue<ClosedSubset, vector<ClosedSubset>, greater<ClosedSubset>> candidate_kSs;
+	priority_queue<ClosedSubset, vector<ClosedSubset>, greater<ClosedSubset>> topk_heap;
 
 	TopK_StableMarriages();
 	

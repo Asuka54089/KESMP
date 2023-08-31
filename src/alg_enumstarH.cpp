@@ -1,11 +1,11 @@
 
-#include "../include/kesmp_enumstarH.h"
+#include "../include/alg_enumstarH.h"
 
 using namespace std;
 
-void KESMP_Heuristic::init_method()
+void EnumStarH::init_method()
 {
-    smg.init_pred_and_succ();
+    poset.init_pred_succ();
     init_topk();
 
     candidate_size = 0;
@@ -13,8 +13,9 @@ void KESMP_Heuristic::init_method()
 
 
 
-vector<ClosedSubset> KESMP_Heuristic::find_topk_S(int k)
+vector<ClosedSubset> EnumStarH::find_topk_closedsubsets(int k)
 {
+    init();
     init_method();
 
     set<int> null_A;
@@ -25,10 +26,10 @@ vector<ClosedSubset> KESMP_Heuristic::find_topk_S(int k)
     // candidate rotations for expanding antichain A
     vector<int> RA;
 
-    for (int i = 0; i < smg.rotation_num; i++)
+    for (int i = 0; i < poset.node_size; i++)
     {
         RA.push_back(i);
-        if (smo.eliminated_rotations[i].weight >= 0)
+        if (poset.eliminated_rotations[i].weight >= 0)
         {  
             candidate_size++;
         }
@@ -36,36 +37,36 @@ vector<ClosedSubset> KESMP_Heuristic::find_topk_S(int k)
 
     expand_antichain(null_A, RA, 0, k);
 
-    vector<ClosedSubset> best_kSs = TKSM_object.generate();
+    vector<ClosedSubset> topk_closed_subsets = topk_object.generate();
 
-    return best_kSs;
+    return topk_closed_subsets;
 }
 
-void KESMP_Heuristic::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
+void EnumStarH::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
 {
 
-    for (int i = smg.rotation_num - 1; i >= pos; i--)
+    for (int i = poset.node_size - 1; i >= pos; i--)
     {
 
         int r = RA[i];
         // only use non-negative rotations (ENUM*H)
-        if (r < 0 || smo.eliminated_rotations[r].weight<0)
+        if (r < 0 || poset.eliminated_rotations[r].weight<0)
         {
             continue;
         }
         A.insert(r);
 
         //update topk results
-        S = smg.antichain_to_closedsubset(A);
+        S = poset.A_to_S(A);
         update_kesm(S, k);
 
         vector<int> tmp_RA;
-        vaild_counter = 0;
+        vaild_counts = 0;
         for (int j = i + 1; j < RA.size(); j++)
         {
             if (RA[j] > 0)
             {
-                if (smg.succ[r].find(RA[j]) != smg.succ[r].end())
+                if (poset.succ[r].find(RA[j]) != poset.succ[r].end())
                 {
                     RA[j] = -RA[j];
                     tmp_RA.push_back(j);
@@ -73,11 +74,11 @@ void KESMP_Heuristic::expand_antichain(set<int> A, vector<int> RA, int pos, int 
             }
             if (RA[j] > 0)
             {
-                vaild_counter = vaild_counter + 1;
+                vaild_counts = vaild_counts + 1;
             }
         }
 
-        if (vaild_counter > 0)
+        if (vaild_counts > 0)
         {
             expand_antichain(A, RA, i + 1, k);
         }
@@ -92,17 +93,15 @@ void KESMP_Heuristic::expand_antichain(set<int> A, vector<int> RA, int pos, int 
 
 
 
-void KESMP_Heuristic::package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results)
+void EnumStarH::package_results(const string &results_file, double runtime, vector<ClosedSubset> topk_closed_subsets)
 {
     map<string, int> counters = {
-        {"antichain_counter", antichain_counter}, 
-        {"update_counter", update_counter}, 
-        {"rotation", smg.rotation_num}, 
-        {"candidate_rotation", candidate_size},
-        {"first_pruning", pruned_rotation_counter}, 
-        {"final_pruning", pruned_rotations.size()}
+        {"sm_counts", sm_counts}, 
+        {"update_counts", update_counts}, 
+        {"R", poset.node_size}, 
+        {"R+0", candidate_size},
         };
     map<string, string> lists = {};
     string save_path = results_file + "_m5";
-    save_results(save_path, "enum*h", runtime, counters, lists, kesm_results);
+    save_results(save_path, "enumstarh", runtime, counters, lists, topk_closed_subsets);
 }

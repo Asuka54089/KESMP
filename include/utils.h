@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 #include <utility>
 #include <algorithm>
 #include <fstream>
@@ -14,9 +15,11 @@
 //mac
 //#include <filesystem>
 
-#include "../include/rotation.h"
+// #include "../include/rotation.h"
 #include "../include/structs.h"
-// #include "../include/sm_operation.h"
+#include "../include/entities_rotation_poset.h"
+
+
 
 using namespace std;
 //ubuntu
@@ -27,15 +30,12 @@ namespace fs = std::experimental::filesystem;
 
 void load_preferences(const string &dir, vector<vector<int>> &male_prefers,vector<vector<int>> &female_prefers);
 
-void load_matchings(const string &dir, vector<int> &matching1,vector<int> &matching2);
+// void load_matchings(const string &dir, vector<int> &matching1,vector<int> &matching2);
+// void load_rotations(const string &rotation_dir, vector<Rotation> &rotations);
+// void load_rotation_edges(const string &rotation_dir, set<pair<int, int>> &rotation_edges);
 
-void load_rotations(const string &rotation_dir, vector<Rotation> &rotations);
-void load_rotation_edges(const string &rotation_dir, set<pair<int, int>> &rotation_edges);
-
-/* Print */
-void print_adj(vector<set<int>> &adj, string type);
-void print_matching(vector<int> &matching, string title);
-void print_rotation_set(set<int> &rotation_set, string title);
+// bool save_results(const string &result_file, string method, double runtime, map<string, int> &counts, map<string, string> &info, vector<ClosedSubset> &best_kSs, SmInstance &smi);
+void save_poset(const string &instance_dir, RotationPoset &rotation_poset);
 
 
 #endif

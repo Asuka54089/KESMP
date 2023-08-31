@@ -1,4 +1,4 @@
-#include "../include/topk_sm.h"
+#include "../include/topk.h"
 
 using namespace std;
 
@@ -9,19 +9,19 @@ TopK_StableMarriages::TopK_StableMarriages(){}
 bool TopK_StableMarriages::update(ClosedSubset S, int k)
 {
     // if the number of candidate best results is smaller than k 
-    if (candidate_kSs.size() < k)
+    if (topk_heap.size() < k)
     {
-        candidate_kSs.push(S);
+        topk_heap.push(S);
         return true;
     }
 
     // if we already have k candidate best results
     // compare the top element
-    ClosedSubset kS = candidate_kSs.top();
+    ClosedSubset kS = topk_heap.top();
     if (S > kS)
     {
-        candidate_kSs.pop();
-        candidate_kSs.push(S);
+        topk_heap.pop();
+        topk_heap.push(S);
         return true;
     }
     return false;
@@ -30,10 +30,10 @@ bool TopK_StableMarriages::update(ClosedSubset S, int k)
 
 int TopK_StableMarriages::tail(int k)
 {
-    if (candidate_kSs.size() == k)
+    if (topk_heap.size() == k)
     {
-        ClosedSubset kS = candidate_kSs.top();
-        return kS.diff_S;
+        ClosedSubset kS = topk_heap.top();
+        return kS.deltaS;
     }
     else{
         return INT_MIN;
@@ -45,18 +45,18 @@ int TopK_StableMarriages::tail(int k)
 vector<ClosedSubset> TopK_StableMarriages::generate()
 {
     // best top-k closed subsets
-    vector<ClosedSubset> best_kSs;
-    while (!candidate_kSs.empty())
+    vector<ClosedSubset> topk_closed_subsets;
+    while (!topk_heap.empty())
     {
-        ClosedSubset S = candidate_kSs.top();
-        best_kSs.push_back(S);
-        candidate_kSs.pop();
+        ClosedSubset S = topk_heap.top();
+        topk_closed_subsets.push_back(S);
+        topk_heap.pop();
     }
-    return best_kSs;
+    return topk_closed_subsets;
 }
 
 void TopK_StableMarriages::clear()
 {
-    while (!candidate_kSs.empty())
-        candidate_kSs.pop();
+    while (!topk_heap.empty())
+        topk_heap.pop();
 }

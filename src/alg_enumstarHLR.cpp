@@ -1,18 +1,20 @@
 
-#include "../include/kesmp_enumstarLR.h"
+#include "../include/alg_enumstarHLR.h"
 
 using namespace std;
 
-void KESMP_LR::init_method()
+void EnumStarHLR::init_method()
 {
-    smg.init_pred_and_succ();
+    candidate_size = 0;
+
+    poset.init_pred_succ();
     init_topk();
 
-    diff_kS = INT_MIN;
+    kth_deltaS = INT_MIN;
 
 
-    visited = new bool[smg.rotation_num];
-    for (int i = 0; i < smg.rotation_num; i++)
+    visited = new bool[poset.node_size];
+    for (int i = 0; i < poset.node_size; i++)
     {
         visited[i] = false;
     }
@@ -21,12 +23,12 @@ void KESMP_LR::init_method()
 
 }
 
-vector<ClosedSubset> KESMP_LR::find_topk_S(int k)
+vector<ClosedSubset> EnumStarHLR::find_topk_closedsubsets(int k)
 {
+    init();
     init_method();
     if ((!lb_flag_rotation) || (!lb_flag_mincutset))
     {
-        // layer bound doesn't work
         vector<ClosedSubset> null;
         return null;
     }
@@ -36,30 +38,29 @@ vector<ClosedSubset> KESMP_LR::find_topk_S(int k)
     // candidate rotations for expanding antichain A
     vector<int> RA;
 
-    for (int i = 0; i < smg.rotation_num; i++)
+    for (int i = 0; i < poset.node_size; i++)
     {
         RA.push_back(i);
+        if (poset.eliminated_rotations[i].weight >= 0)
+        {  
+            candidate_size++;
+        }
     }
 
     expand_antichain(null_A, RA, 0, k);
 
-    vector<ClosedSubset> best_kSs = TKSM_object.generate();
+    vector<ClosedSubset> topk_closed_subsets = topk_object.generate();
 
     
-    return best_kSs;
+    return topk_closed_subsets;
 }
 
-void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
+void EnumStarHLR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
 {
-    if (antichain_counter > MAX_ANTICHAIN_NUM)
-    {
-        return;
-    }
-    
-    for (int i = smg.rotation_num - 1; i >= pos; i--)
+    for (int i = poset.node_size - 1; i >= pos; i--)
     {
         int r = RA[i];
-        if (r < 0)
+        if (r < 0 || poset.eliminated_rotations[r].weight<0)
         {
             continue;
         }
@@ -69,24 +70,22 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
             continue;
         }
 
-        //calculate maxflow bound for a unvisited r
+        
         if (visited[r] == false)
         {
-            //cout<<"visited[r]:"<<r<<endl;
             visited[r] = true;
 
             //layer bound
-            L_current = smo.eliminated_rotations[r].depth;
+            L_current = poset.eliminated_rotations[r].depth;
             if (lb_flag_stop == false)
             {
                 if (L_current == L_maxflow)
                 {
-                    //cout << "update layer bound: "<< L_current<<endl;
                     update_layer_bound(k);
                 }
             }
 
-            //rotation bound
+            //subset bound
             calculate_rotation_bound(r, k);
         }
 
@@ -103,7 +102,7 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
         if (lb_flag_cross)
         {
             //update topk results
-            S = smg.antichain_to_closedsubset(A);
+            S = poset.A_to_S(A);
             is_updated = update_kesm(S, k);
             if (is_updated)
             {
@@ -113,12 +112,12 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
         }
 
         vector<int> tmp_RA;
-        vaild_counter = 0;
+        vaild_counts = 0;
         for (int j = i + 1; j < RA.size(); j++)
         {
             if (RA[j] > 0)
             {
-                if (smg.succ[r].find(RA[j]) != smg.succ[r].end())
+                if (poset.succ[r].find(RA[j]) != poset.succ[r].end())
                 {
                     RA[j] = -RA[j];
                     tmp_RA.push_back(j);
@@ -126,7 +125,7 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
             }
             if (RA[j] > 0)
             {
-                vaild_counter = vaild_counter + 1;
+                vaild_counts = vaild_counts + 1;
             }
         }
 
@@ -138,7 +137,7 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
             }
         }
 
-        if (vaild_counter > 0 && lb_flag_cross == true)
+        if (vaild_counts > 0 && lb_flag_cross == true)
         {
             expand_antichain(A, RA, i + 1, k);
         }
@@ -151,9 +150,9 @@ void KESMP_LR::expand_antichain(set<int> A, vector<int> RA, int pos, int k)
     }
 }
 
-void KESMP_LR::package_results(const string &results_file, double runtime, vector<ClosedSubset> kesm_results)
+void EnumStarHLR::package_results(const string &results_file, double runtime, vector<ClosedSubset> topk_closed_subsets)
 {
-    string save_path = results_file + "_m4";
+    string save_path = results_file + "_m6";
     map<string, int> counters = {};
     map<string, string> lists = {};
     if (!lb_flag_rotation | !lb_flag_mincutset)
@@ -163,34 +162,34 @@ void KESMP_LR::package_results(const string &results_file, double runtime, vecto
             {"lb_flag_mincutset", lb_flag_mincutset},
         };
         lists = {};
-        save_results(save_path, "hybrid", runtime, counters, lists, kesm_results);
+        save_results(save_path, "enumstarhlr", runtime, counters, lists, topk_closed_subsets);
     }
     else
     {
         counters = {
-            {"antichain_counter", antichain_counter},
-            //{"update_counter", update_counter},
+            {"sm_counts", sm_counts},
+            {"update_counts", update_counts},
             // {"recursion_counter", recursion_counter},
-            {"#rotation", smg.rotation_num},
-            {"first_pruning", pruned_rotation_counter},
-            {"final_pruning", pruned_rotations.size()},
-            {"L_max", L_max},
-            {"L_stop", L_stop},
-            {"layer_bound", layer_bound},
-            {"diff_kS", diff_kS},
-            //{"achain_test_counter", achain_test_counter}
+            {"R", poset.node_size},
+            {"rb_first_pruning", pruned_rotation_counts},
+            {"rb_final_pruning", pruned_rotations.size()},
+            {"lb_layer_max", L_max},
+            {"lb_layer_stop", L_stop},
+            {"lb", layer_bound},
+            {"kth_deltaS", kth_deltaS},
+            {"R+0", candidate_size}
             };
-        string mincut_layers_str = convert_list(mincut_layers);
-        string mincut_bounds_str = convert_list(mincut_bounds);
-        string mincut_diff_kS_str = convert_list(mincut_diff_kS);
+        string lb_layers_str = convert_list(lb_layers);
+        string lb_bounds_str = convert_list(lb_bounds);
+        string lb_k_deltaS_str = convert_list(lb_k_deltaS);
         lists = {
-            {"rotation_time", to_string(rotation_bound_time)},
-            {"layer_bound_time", to_string(layer_bound_time)},
-            {"mincut_layers", mincut_layers_str},
-            {"mincut_bounds", mincut_bounds_str},
-            {"mincut_diff_kS", mincut_diff_kS_str},
+            {"rb_time", to_string(rb_time)},
+            {"lb_time", to_string(lb_time)},
+            {"lb_layers", lb_layers_str},
+            {"lb_bounds", lb_bounds_str},
+            {"lb_kth_deltaS", lb_k_deltaS_str},
         };
 
-        save_results(save_path, "enum*lr", runtime, counters, lists, kesm_results);
+        save_results(save_path, "enumstarhlr", runtime, counters, lists, topk_closed_subsets);
     }
 }

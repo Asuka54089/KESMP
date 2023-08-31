@@ -17,21 +17,21 @@ using namespace std;
 
 struct ClosedSubset
 {
-	int diff_S;// Delta S
+	int deltaS;// Delta S
 	set<int> rotations; 
-	ClosedSubset(int _diff_S, set<int> _rotations) : diff_S(_diff_S), rotations(_rotations) {}
+	ClosedSubset(int _deltaS, set<int> _rotations) : deltaS(_deltaS), rotations(_rotations) {}
 
 	bool operator<(const ClosedSubset &s2) const
 	{
-		return (diff_S < s2.diff_S);
+		return (deltaS < s2.deltaS);
 	}
 	bool operator>(const ClosedSubset &s2) const
 	{
-		return (diff_S > s2.diff_S);
+		return (deltaS > s2.deltaS);
 	}
 	bool operator==(const ClosedSubset &s2) const
 	{
-		return (diff_S == s2.diff_S);
+		return (deltaS == s2.deltaS);
 	}
 };
 

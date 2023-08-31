@@ -4,16 +4,10 @@
 
 using namespace std;
 
-Query::Query(string preference_file, string rotation_file, string matching_file, string results_file)
+Query::Query(string instance_dir)
 {
-    // load sm instance
-    load_preferences(preference_file, male_prefers, female_prefers);
-    load_matchings(matching_file, male_opt_matching, female_opt_matching);
-    load_rotations(rotation_file + "_r", rotations);
-    load_rotation_edges(rotation_file + "_e", rotation_edges);
-
     //init result file
-    this->results_file = results_file;
+    this->instance_dir = instance_dir;
 }
 
 // find top-k results
@@ -47,91 +41,90 @@ void Query::query(int method, int k)
 
 void Query::enumeration(int k)
 {
-    KESMP_Enum x = KESMP_Enum();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    Enum x = Enum(instance_dir);
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
 
 void Query::enumstar(int k)
 {
-    KESMP_Enumstar x = KESMP_Enumstar();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStar x = EnumStar(instance_dir);
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
 
 void Query::enumstar_layer(int k)
 {
-    KESMP_Layer x = KESMP_Layer();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStarL x = EnumStarL(instance_dir);
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
 
 void Query::enumstar_rotation(int k)
 {
-    KESMP_Rotation x = KESMP_Rotation();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStarR x = EnumStarR(instance_dir);
+    
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+
+    x.evaluate(results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
 
 void Query::enumstar_lr(int k)
 {
-    KESMP_LR x = KESMP_LR();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStarLR x = EnumStarLR(instance_dir);
+    
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
 
 void Query::enumstar_heuristic(int k)
 {
-    KESMP_Heuristic x = KESMP_Heuristic();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStarH x = EnumStarH(instance_dir);
+    
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
+    save_poset(instance_dir, x.poset);
 }
 
 void Query::enumstar_hlr(int k)
 {
-    KESMP_HLR x = KESMP_HLR();
-    x.init(male_prefers, female_prefers, male_opt_matching, rotations, rotation_edges);
+    EnumStarHLR x = EnumStarHLR(instance_dir);
 
     start_time = clock();
-    results = x.find_topk_S(k);
+    results = x.find_topk_closedsubsets(k);
     end_time = clock();
 
     runtime = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-    x.package_results(results_file + "_" + to_string(k), runtime, results);
+    x.package_results(instance_dir + "_" + to_string(k), runtime, results);
 }
